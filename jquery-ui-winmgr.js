@@ -10,8 +10,8 @@ $.extend({winmgr: {
 
 	dialogs: {}, // Storage for open dialogs
 
-	fragmentContent: '#content', // The content container on all AJAX calls (i.e. strip out everything except this when displaying)
-	fragmentTitle: 'title', // Allow the window title to use this element contents on AJAX load (null to disable)
+	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
+	fragmentTitle: ['#title', 'title'], // Allow the window title to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 
 	init: function(options) {
 		$.extend($.winmgr, options);
@@ -19,6 +19,23 @@ $.extend({winmgr: {
 			$.winmgr.recoverState();
 	},
 
+	/**
+	* Run a series of jQuery selectors returning the first matching item
+	* @param array|string selectors An array of selectors to try or a simple string (in which case DOM.find() is run normally)
+	* @param object DOM jQuery object representing the DOM to scan
+	* @return array The first matching item
+	*/
+	_findFirst: function(selectors, DOM) {
+		if (typeof selectors == 'string') // Just run normally if its a string
+			return DOM.find(selectors);
+
+		for (var i in selectors) {
+			var res = DOM.find(selectors[i]);
+			if (res.length)
+				return res.first();
+		}
+		return [];
+	},
 
 	/**
 	* Create a new dialog window
@@ -109,13 +126,13 @@ $.extend({winmgr: {
 					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incomming to avoid permission denied errors in IE
 				// Process window title {{{
 				if ($.winmgr.fragmentTitle) {
-					var titleDOM = body.find($.winmgr.fragmentTitle);
+					var titleDOM = $.winmgr._findFirst($.winmgr.fragmentTitle, body);
 					if (titleDOM.length)
-						$.winmgr.setTitle(id, titleDOM.text());
+						$.winmgr.setTitle(id, titleDOM.html());
 				}
 				// }}}
 				// Process content {{{
-				var content = body.find($.winmgr.fragmentContent);
+				var content = $.winmgr._findFirst($.winmgr.fragmentContent, body);
 				if (content.length) {
 					win.element.html(content.html());
 				} else {
