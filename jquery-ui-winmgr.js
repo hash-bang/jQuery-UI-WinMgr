@@ -110,12 +110,8 @@ $.extend({winmgr: {
 				// Process window title {{{
 				if ($.winmgr.fragmentTitle) {
 					var titleDOM = body.find($.winmgr.fragmentTitle);
-					if (titleDOM.length) {
-						var titleText = titleDOM.text();
-						win.element.dialog('option', 'title', titleText);
-						$.winmgr.dialogs[id].title = titleText;
-						$.winmgr.saveState();
-					}
+					if (titleDOM.length)
+						$.winmgr.setTitle(id, titleDOM.text());
 				}
 				// }}}
 				// Process content {{{
@@ -133,6 +129,28 @@ $.extend({winmgr: {
 		});
 	},
 
+	/**
+	* Set the title of a given dialog
+	* This function only really exists so it can be subclassed/overridden if you need your own fancy title bar
+	* @param string id The ID of the dialog to set the title of
+	* @param string title The new title of the window
+	* @param bool save Whether to trigger $.winmgr.saveState() after the call (defaults to true)
+	*/
+	setTitle: function(id, title, save) {
+		$.winmgr.dialogs[id].element.siblings('.ui-dialog-titlebar').html(title);
+		$.winmgr.dialogs[id].title = title;
+		if (save || save === undefined)
+			$.winmgr.saveState();
+	},
+
+	/**
+	* Close and release the given dialog
+	* @param string id The ID of the dialog to close
+	*/
+	close: function(id) {
+		$.winmgr.dialogs[id].element.dialog('close');
+	},
+
 	saveState: function() {
 		if (!$.winmgr.recover)
 			return;
@@ -142,8 +160,6 @@ $.extend({winmgr: {
 			store[d] = $.extend({}, $.winmgr.dialogs[d]);
 			delete store[d].element;
 		}
-		console.log('Save', store);
-
 		localStorage.setItem('winmgr', JSON.stringify(store));
 	},
 
@@ -151,11 +167,8 @@ $.extend({winmgr: {
 		var lsState = localStorage.getItem('winmgr');
 		if (lsState) {
 			$.winmgr.dialogs = JSON.parse(lsState);
-			for (var d in $.winmgr.dialogs) {
-				console.log('Recover', $.winmgr.dialogs[d]);
-				console.log('DIM', $.winmgr.dialogs[d].location);
+			for (var d in $.winmgr.dialogs)
 				$.winmgr.spawn($.winmgr.dialogs[d]);
-			}
 		}
 	},
 
