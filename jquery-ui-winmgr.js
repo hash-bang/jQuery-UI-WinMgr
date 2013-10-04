@@ -10,8 +10,8 @@ $.extend({winmgr: {
 
 	dialogs: {}, // Storage for open dialogs
 
-	innerContent: '#content', // The content container on all AJAX calls (i.e. strip out everything except this when displaying)
-	innerTitle: 'title', // Allow the window title to use this element contents on AJAX load (null to disable)
+	fragmentContent: '#content', // The content container on all AJAX calls (i.e. strip out everything except this when displaying)
+	fragmentTitle: 'title', // Allow the window title to use this element contents on AJAX load (null to disable)
 
 	init: function(options) {
 		$.extend($.winmgr, options);
@@ -48,7 +48,7 @@ $.extend({winmgr: {
 				modal: settings.modal,
 				resizeable: settings.resizable,
 				title: settings.title,
-				position: settings.location ? [settings.location.left, settings.location.top] : {my: 'center center', at: 'center center', of: $.winmgr.baseParent},
+				position: settings.location.left || settings.location.top ? [settings.location.left, settings.location.top] : {my: 'center center', at: 'center center', of: $.winmgr.baseParent},
 				close: function(e, ui) {
 					delete $.winmgr.dialogs[settings.id];
 					$.winmgr.saveState();
@@ -69,6 +69,12 @@ $.extend({winmgr: {
 
 		if (settings.content)
 			settings.element.html(settings.content);
+
+		if (!settings.location.left && !settings.location.top) {
+			var pos = settings.element.position;
+			settings.location.left = pos.left;
+			settings.location.left = pos.top;
+		}
 
 		settings.location = {left: settings.location.left || settings.left, top: settings.location.top || settings.top, width: settings.location.width || settings.width, height: settings.location.height || settings.height};
 		delete(settings.left);
@@ -102,8 +108,8 @@ $.extend({winmgr: {
 				var body = $('<div></div>')
 					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incomming to avoid permission denied errors in IE
 				// Process window title {{{
-				if ($.winmgr.innerTitle) {
-					var titleDOM = body.find($.winmgr.innerTitle);
+				if ($.winmgr.fragmentTitle) {
+					var titleDOM = body.find($.winmgr.fragmentTitle);
 					if (titleDOM.length) {
 						var titleText = titleDOM.text();
 						win.element.dialog('option', 'title', titleText);
@@ -113,11 +119,11 @@ $.extend({winmgr: {
 				}
 				// }}}
 				// Process content {{{
-				var content = body.find($.winmgr.innerContent);
+				var content = body.find($.winmgr.fragmentContent);
 				if (content.length) {
 					win.element.html(content.html());
 				} else {
-					win.element.html('<div class="alert alert-block alert-error">No content found matching ' + $.winmgr.innerContent + '</div>');
+					win.element.html('<div class="alert alert-block alert-error">No content found matching ' + $.winmgr.fragmentContent + '</div>');
 				}
 				// }}}
 			},
