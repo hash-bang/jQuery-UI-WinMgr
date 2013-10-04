@@ -10,6 +10,9 @@ $.extend({winmgr: {
 
 	dialogs: {}, // Storage for open dialogs
 
+	innerContent: '#content', // The content container on all AJAX calls (i.e. strip out everything except this when displaying)
+	innerTitle: 'title', // Allow the window title to use this element contents on AJAX load (null to disable)
+
 	init: function(options) {
 		$.extend($.winmgr, options);
 		if ($.winmgr.recover)
@@ -96,7 +99,27 @@ $.extend({winmgr: {
 			cache: false,
 			dataType: 'html',
 			success: function(html) {
-				win.element.html(html);
+				var body = $('<div></div>')
+					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incomming to avoid permission denied errors in IE
+				// Process window title {{{
+				if ($.winmgr.innerTitle) {
+					var titleDOM = body.find($.winmgr.innerTitle);
+					if (titleDOM.length) {
+						var titleText = titleDOM.text();
+						win.element.dialog('option', 'title', titleText);
+						$.winmgr.dialogs[id].title = titleText;
+						$.winmgr.saveState();
+					}
+				}
+				// }}}
+				// Process content {{{
+				var content = body.find($.winmgr.innerContent);
+				if (content.length) {
+					win.element.html(content.html());
+				} else {
+					win.element.html('<div class="alert alert-block alert-error">No content found matching ' + $.winmgr.innerContent + '</div>');
+				}
+				// }}}
 			},
 			error: function(jq, errText) {
 				win.element.html('<div class="alert alert-block alert-error">' + errText + '</div>');
