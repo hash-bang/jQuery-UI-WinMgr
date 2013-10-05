@@ -15,6 +15,7 @@ $.extend({winmgr: {
 	fragmentRedirect: ['#redirect'], // Use this as a redirection if present
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
 	fragmentTitle: ['#title', 'title'], // Allow the window title to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
+	fragmentFooter: ['#footer'], // Allow the window footer to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 
 	init: function(options) {
 		$.extend($.winmgr, options);
@@ -212,6 +213,19 @@ $.extend({winmgr: {
 				} else {
 					win.element.html('<div class="alert alert-block alert-error">No content found matching ' + $.winmgr.fragmentContent + '</div>');
 					win.status = 'error';
+				}
+				// }}}
+				// Process footer {{{
+				var footer = $.winmgr._findFirst($.winmgr.fragmentFooter, body);
+				if (footer.length) {
+					var dialog = win.element.closest('.ui-dialog');
+					var dialogFooter = dialog.find('.ui-dialog-buttonpane');
+					if (!dialogFooter.length)
+						dialogFooter = $('<div></div>')
+							.addClass('ui-dialog-buttonpane ui-widget-content ui-helper-clearfix')
+							.appendTo(dialog);
+
+					dialogFooter.html(footer.html());
 				}
 				// }}}
 				win.lastRefresh = (new Date).getTime();
