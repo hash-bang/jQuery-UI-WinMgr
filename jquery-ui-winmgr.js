@@ -133,6 +133,22 @@ $.extend({winmgr: {
 					data[vals[key].name] = vals[key].value;
 				// console.log('SUBMIT', form.attr('action'), data);
 				$.winmgr.go(settings.id, form.attr('action'), data);
+			})
+			.on('click', 'a[href]', function(e) {
+				var me = $(this);
+				var href = me.attr('href');
+				if (href.substr(0, 1) == '#') // Inner page link - ignore
+					return;
+
+				e.preventDefault();
+				if ($(this).attr('target')) { // Open new window
+					$.winmgr.spawn({
+						title: settings.title,
+						url: href
+					});
+				} else { // Replace this window
+					$.winmgr.go(settings.id, href);
+				}
 			});
 
 		// Fix: Catch all clicks for anything with type=submit and turn it into a form submission {{{
