@@ -120,7 +120,37 @@ $.extend({winmgr: {
 					win.scroll.left = me.scrollLeft();
 					$.winmgr.saveState();
 				}
+			})
+			.on('submit', 'form', function(e) {
+				e.preventDefault();
+				var form = $(this);
+				var vals = form.serializeArray();
+				var data = {};
+				for (var key in vals)
+					data[vals[key].name] = vals[key].value;
+				// console.log('SUBMIT', form.attr('action'), data);
+				$.winmgr.go(settings.id, form.attr('action'), data);
 			});
+
+		// Fix: Catch all clicks for anything with type=submit and turn it into a form submission {{{
+		settings.element.closest('.ui-dialog')
+			.on('click', '[type=submit]', function() {
+				var form = $(this).closest('.ui-dialog').find('form');
+				if (form.length) {
+					if ($(this).attr('name')) { // Include my submission value in the stream
+						var myValue = form.find('input[name="' + $(this).attr('name') + '"]');
+						if (!myValue.length) { // Doesn't already exist - append it
+							$('<input/>')
+								.attr('name', $(this).attr('name'))
+								.attr('type', 'hidden')
+								.val($(this).val() || $(this).attr('value'))
+								.appendTo(form);
+						}
+					}
+					form.submit();
+				}
+			});
+		// }}}
 
 		if (settings.content) { // Load static content
 			settings.element.html(settings.content);
@@ -171,8 +201,8 @@ $.extend({winmgr: {
 		win.element
 			// .trigger('scroll') // Trigger scroll event to save scroll position before we override
 			.html(
-				'<div class="pull-center"><i class="icon-spinner icon-spin icon-4x"></i></div>' +
-				'<div class="pull-center pad-top muted">Loading country information...</div>'
+				'<div class="pull-center pad-top"><i class="icon-spinner icon-spin icon-4x"></i></div>' +
+				'<div class="pull-center pad-top muted">Loading...</div>'
 			);
 		win.status = 'loading';
 
