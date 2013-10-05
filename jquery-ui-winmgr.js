@@ -75,7 +75,8 @@ $.extend({winmgr: {
 			data: {},
 			status: 'idle', // ENUM: ('idle', 'loading', 'error')
 			autoRefresh: $.winmgr.autoRefresh, // Auto refresh this dialog this number of milliseconds (poll occurs based on $.winmgr.autoRefresh though so it might not be accurate)
-			lastRefresh: 0
+			lastRefresh: 0,
+			scroll: {top: 0, left: 0} // Default scroll offsets (mainly used to restore scrolling to windows after refresh / restores)
 		}, options);
 		if (!settings.id)
 			settings.id = $.winmgr.getUniqueId($.winmgr.basePrefix);
@@ -108,10 +109,24 @@ $.extend({winmgr: {
 					$.winmgr.dialogs[settings.id].location.height = ui.size.height;
 					$.winmgr.saveState();
 				}
-			}));
+			}))
+			.on('scroll', function(e) {
+				var me = $(this);
+				var win = $.winmgr.dialogs[settings.id];
+				if (win.status == 'idle') {
+					win.scroll.top = me.scrollTop();
+					win.scroll.left = me.scrollLeft();
+					$.winmgr.saveState();
+				}
+			});
 
-		if (settings.content)
+		if (settings.content) { // Load static content
 			settings.element.html(settings.content);
+			if (settings.scroll.top)
+				$.winmgr.dialogs[settings.id].element.scrollTop(settings.scroll.top);
+			if (settings.scroll.left)
+				$.winmgr.dialogs[settings.id].element.scrollLeft(settings.scroll.left);
+		}
 
 		if (!settings.location.left && !settings.location.top) {
 			var pos = settings.element.position;
@@ -137,10 +152,12 @@ $.extend({winmgr: {
 		if (!win)
 			return;
 
-		win.element.html(
-			'<div class="pull-center"><i class="icon-spinner icon-spin icon-4x"></i></div>' +
-			'<div class="pull-center pad-top muted">Loading country information...</div>'
-		);
+		win.element
+			// .trigger('scroll') // Trigger scroll event to save scroll position before we override
+			.html(
+				'<div class="pull-center"><i class="icon-spinner icon-spin icon-4x"></i></div>' +
+				'<div class="pull-center pad-top muted">Loading country information...</div>'
+			);
 		win.status = 'loading';
 
 		$.ajax({
@@ -162,6 +179,10 @@ $.extend({winmgr: {
 				var content = $.winmgr._findFirst($.winmgr.fragmentContent, body);
 				if (content.length) {
 					win.element.html(content.html());
+					if (win.scroll.top)
+						win.element.scrollTop(win.scroll.top);
+					if (win.scroll.left)
+						win.element.scrollLeft(win.scroll.left);
 					win.status = 'idle';
 				} else {
 					win.element.html('<div class="alert alert-block alert-error">No content found matching ' + $.winmgr.fragmentContent + '</div>');
@@ -211,7 +232,8 @@ $.extend({winmgr: {
 				resizeable: $.winmgr.dialogs[d].resizeable,
 				title: $.winmgr.dialogs[d].title,
 				url: $.winmgr.dialogs[d].url,
-				data: $.winmgr.dialogs[d].data
+				data: $.winmgr.dialogs[d].data,
+				scroll: $.winmgr.dialogs[d].scroll
 			};
 		}
 		localStorage.setItem('winmgr', JSON.stringify(store));
