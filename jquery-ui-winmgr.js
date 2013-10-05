@@ -67,7 +67,7 @@ $.extend({winmgr: {
 				title: settings.title,
 				position: settings.location.left || settings.location.top ? [settings.location.left, settings.location.top] : {my: 'center center', at: 'center center', of: $.winmgr.baseParent},
 				close: function(e, ui) {
-					delete $.winmgr.dialogs[settings.id];
+					delete($.winmgr.dialogs[settings.id]);
 					$.winmgr.saveState();
 				},
 				dragStop: function(e, ui) {
@@ -174,18 +174,25 @@ $.extend({winmgr: {
 
 		var store = {};
 		for (var d in $.winmgr.dialogs) {
-			store[d] = $.extend({}, $.winmgr.dialogs[d]);
-			delete store[d].element;
+			store[d] = { // Only import the following
+				location: $.winmgr.dialogs[d].location,
+				modal: $.winmgr.dialogs[d].modal,
+				resizeable: $.winmgr.dialogs[d].resizeable,
+				title: $.winmgr.dialogs[d].title,
+				url: $.winmgr.dialogs[d].url,
+				data: $.winmgr.dialogs[d].data
+			};
 		}
+		console.log('SAVE', store);
 		localStorage.setItem('winmgr', JSON.stringify(store));
 	},
 
 	recoverState: function() {
 		var lsState = localStorage.getItem('winmgr');
 		if (lsState) {
-			$.winmgr.dialogs = JSON.parse(lsState);
-			for (var d in $.winmgr.dialogs)
-				$.winmgr.spawn($.winmgr.dialogs[d]);
+			var newStates = JSON.parse(lsState);
+			for (var d in newStates)
+				$.winmgr.spawn(newStates[d]);
 		}
 	},
 
