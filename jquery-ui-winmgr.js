@@ -12,6 +12,7 @@ $.extend({winmgr: {
 
 	autoRefresh: 10000, // How often an auto-refresh action should take place in milliseconds (set to null to disable)
 
+	fragmentRedirect: ['#redirect'], // Use this as a redirection if present
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
 	fragmentTitle: ['#title', 'title'], // Allow the window title to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 
@@ -147,6 +148,20 @@ $.extend({winmgr: {
 		$.winmgr.saveState();
 	},
 
+	/**
+	/* Navigate an existing dialog to a new URL
+	* @param string id The id of the dialog
+	* @param string url The new URL to navigate to
+	* @param object data Optional data hash to also pass
+	*/
+	go: function(id, url, data) {
+		var win = $.winmgr.dialogs[id];
+		win.url = url;
+		win.data = data;
+		$.winmgr.saveState();
+		$.winmgr.refresh(id);
+	},
+
 	refresh: function(id) {
 		var win = $.winmgr.dialogs[id];
 		if (!win)
@@ -168,6 +183,16 @@ $.extend({winmgr: {
 			success: function(html) {
 				var body = $('<div></div>')
 					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incomming to avoid permission denied errors in IE
+				// Process redirection {{{
+				if ($.winmgr.fragmentRedirect) {
+					var redirectDOM = $.winmgr._findFirst($.winmgr.fragmentRedirect, body);
+					if (redirectDOM.length) {
+						setTimeout(function() { // Set redirect on next free moment the browser has to go to new URL
+							$.winmgr.go(id, redirectDOM.text());
+						}, 0);
+					}
+				}
+				// }}}
 				// Process window title {{{
 				if ($.winmgr.fragmentTitle) {
 					var titleDOM = $.winmgr._findFirst($.winmgr.fragmentTitle, body);
