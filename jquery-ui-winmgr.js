@@ -1,4 +1,4 @@
-$(function() {
+$(function() { 
 
 $.extend({winmgr: {
 	baseParent: $('body'), // Where to stick newly created dialogs
@@ -19,6 +19,9 @@ $.extend({winmgr: {
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
 	fragmentTitle: ['#title', 'title'], // Allow the window title to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 	fragmentFooter: ['#footer'], // Allow the window footer to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
+
+	onPreLoad: function(id) { return; }, // Binder to execute other actions before AJAX load gets called with the id of the dialog thats loaded
+	onPostLoad: function(id) { return; }, // Binder to execute other actions after AJAX load gets called with the id of the dialog thats loaded
 
 	init: function(options) {
 		$.extend($.winmgr, options);
@@ -225,6 +228,7 @@ $.extend({winmgr: {
 			);
 		win.status = 'loading';
 
+		$.winmgr.onPreLoad(id);
 		$.ajax({
 			url: win.url,
 			data: $.extend({}, $.winmgr.baseData, win.data),
@@ -279,6 +283,7 @@ $.extend({winmgr: {
 				}
 				// }}}
 				win.lastRefresh = (new Date).getTime();
+				$.winmgr.onPostLoad(id);
 			},
 			error: function(jq, errText) {
 				win.element.html('<div class="alert alert-block alert-error">' + errText + '</div>');
