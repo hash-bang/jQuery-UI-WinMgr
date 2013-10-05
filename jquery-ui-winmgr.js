@@ -5,6 +5,9 @@ $.extend({winmgr: {
 	basePrefix: 'dialog-', // What prefix to use when creating anonymous dialogs
 	baseOptions: { // Pass these options to jQuery-UI when creating the dialog
 	},
+	baseData: { // Merge all outgoing AJAX requests with the following POST data
+		'jquery-winmgr': '1'
+	},
 
 	recover: true, // Re-open windows on page refresh
 
@@ -208,9 +211,10 @@ $.extend({winmgr: {
 
 		$.ajax({
 			url: win.url,
-			data: win.data,
+			data: $.extend({}, $.winmgr.baseData, win.data),
 			cache: false,
 			dataType: 'html',
+			type: 'POST',
 			success: function(html) {
 				var body = $('<div></div>')
 					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incomming to avoid permission denied errors in IE
