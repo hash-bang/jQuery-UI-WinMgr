@@ -10,6 +10,8 @@ $.extend({winmgr: {
 
 	dialogs: {}, // Storage for open dialogs
 
+	autoRefresh: 10000, // How often an auto-refresh action should take place in milliseconds (set to null to disable)
+
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
 	fragmentTitle: ['#title', 'title'], // Allow the window title to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 
@@ -17,6 +19,8 @@ $.extend({winmgr: {
 		$.extend($.winmgr, options);
 		if ($.winmgr.recover)
 			$.winmgr.recoverState();
+		if ($.winmgr.autoRefresh)
+			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefresh);
 	},
 
 	/**
@@ -38,10 +42,29 @@ $.extend({winmgr: {
 	},
 
 	/**
+	* The actual worker for the autoRefresh operation
+	*/
+	autoRefreshPoll: function() {
+		var now = (new Date).getTime();
+		for (var d in $.winmgr.dialogs) {
+			if (
+				$.winmgr.dialogs[d].status != 'loading' // Its not already loading AND
+				&& $.winmgr.dialogs[d].autoRefresh // AutoRefresh is enabled AND
+				&& $.winmgr.dialogs[d].lastRefresh + $.winmgr.dialogs[d].autoRefresh <= now // Its due to be updated
+			) {
+				$.winmgr.refresh(d);
+			}
+		}
+		if ($.winmgr.autoRefresh)
+			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefresh);
+	},
+
+	/**
 	* Create a new dialog window
 	*/
 	spawn: function(options) {
 		var settings = $.extend({}, {
+			// WARNING: If any new options are added remember to update the list in $.winmgr.saveState so that it gets saved
 			height: 200,
 			width: 400,
 			modal: false,
@@ -49,7 +72,10 @@ $.extend({winmgr: {
 			title: 'Information',
 			'location': {left: 0, top: 0, width: 0, height: 0}, // {left: 0, top: 0, width: 0, height: 0}
 			url: null,
-			data: {}
+			data: {},
+			status: 'idle', // ENUM: ('idle', 'loading', 'error')
+			autoRefresh: $.winmgr.autoRefresh, // Auto refresh this dialog this number of milliseconds (poll occurs based on $.winmgr.autoRefresh though so it might not be accurate)
+			lastRefresh: 0
 		}, options);
 		if (!settings.id)
 			settings.id = $.winmgr.getUniqueId($.winmgr.basePrefix);
@@ -115,6 +141,7 @@ $.extend({winmgr: {
 			'<div class="pull-center"><i class="icon-spinner icon-spin icon-4x"></i></div>' +
 			'<div class="pull-center pad-top muted">Loading country information...</div>'
 		);
+		win.status = 'loading';
 
 		$.ajax({
 			url: win.url,
@@ -135,13 +162,17 @@ $.extend({winmgr: {
 				var content = $.winmgr._findFirst($.winmgr.fragmentContent, body);
 				if (content.length) {
 					win.element.html(content.html());
+					win.status = 'idle';
 				} else {
 					win.element.html('<div class="alert alert-block alert-error">No content found matching ' + $.winmgr.fragmentContent + '</div>');
+					win.status = 'error';
 				}
 				// }}}
+				win.lastRefresh = (new Date).getTime();
 			},
 			error: function(jq, errText) {
 				win.element.html('<div class="alert alert-block alert-error">' + errText + '</div>');
+				win.status = 'error';
 			},
 		});
 	},
@@ -183,7 +214,6 @@ $.extend({winmgr: {
 				data: $.winmgr.dialogs[d].data
 			};
 		}
-		console.log('SAVE', store);
 		localStorage.setItem('winmgr', JSON.stringify(store));
 	},
 
