@@ -21,8 +21,33 @@ $.extend({winmgr: {
 	fragmentTitle: ['#title', 'title'], // Allow the window title to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 	fragmentFooter: ['#footer'], // Allow the window footer to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 
+	// Event Hooks {{{
+	// All the below are the default handlers for various events.
+	// You can override any of these during the init() operation e.g. $.winmgr.init({onPreLoad: function() { // Do something else})
 	onPreLoad: function(id) { return; }, // Binder to execute other actions before AJAX load gets called with the id of the dialog thats loaded
 	onPostLoad: function(id) { return; }, // Binder to execute other actions after AJAX load gets called with the id of the dialog thats loaded
+	onSetStatus: function(id, status) { // Binder to handle status changes. Its default actions are to defer to onSetStatus<Status> (e.g. onSetStatusLoading)
+		if (status == 'idle') {
+			$.winmgr.onSetStatusIdle(id);
+		} else if (status == 'loading') {
+			$.winmgr.onSetStatusLoading(id);
+		} else if (status == 'error') {
+			$.winmgr.onSetStatusError(id);
+		}
+	},
+	onSetStatusIdle: function(id) { return; }, // Binder to handle 'idle' status
+	onSetStatusError: function(id) { // Binder to handle 'error' status - Default action is to display the .error property in a nice alert box
+		var win = $.winmgr.dialogs[id];
+		win.element.html('<div class="alert alert-block alert-error">' + win.error + '</div>');
+	},
+	onSetStatusLoading: function(id) { // Binder to handle 'loading' status - Default action is to display a holding message
+		var win = $.winmgr.dialogs[id];
+		win.element.html(
+			'<div class="pull-center pad-top"><i class="icon-spinner icon-spin icon-4x"></i></div>' +
+			'<div class="pull-center pad-top muted">Loading...</div>'
+		);
+	},
+	// }}}
 
 	init: function(options) {
 		$.extend($.winmgr, options);
@@ -100,6 +125,7 @@ $.extend({winmgr: {
 			status: 'idle', // ENUM: ('idle', 'loading', 'error')
 			autoRefresh: $.winmgr.autoRefresh, // Auto refresh this dialog this number of milliseconds (poll occurs based on $.winmgr.autoRefresh though so it might not be accurate)
 			lastRefresh: 0,
+			error: null, // The last error (string) to occur - used by onSetStatus(id, 'error') to display something helpful
 			scroll: {top: 0, left: 0} // Default scroll offsets (mainly used to restore scrolling to windows after refresh / restores)
 		}, options);
 		if (!settings.id)
@@ -246,13 +272,8 @@ $.extend({winmgr: {
 		if (!win)
 			return;
 
-		win.element
-			// .trigger('scroll') // Trigger scroll event to save scroll position before we override
-			.html(
-				'<div class="pull-center pad-top"><i class="icon-spinner icon-spin icon-4x"></i></div>' +
-				'<div class="pull-center pad-top muted">Loading...</div>'
-			);
 		win.status = 'loading';
+		$.winmgr.onSetStatus(id, win.status); // Kick off the status change
 
 		$.winmgr.onPreLoad(id);
 		$.ajax({
@@ -290,9 +311,11 @@ $.extend({winmgr: {
 					if (win.scroll.left)
 						win.element.scrollLeft(win.scroll.left);
 					win.status = 'idle';
+					$.winmgr.onSetStatus(id, win.status);
 				} else {
-					win.element.html('<div class="alert alert-block alert-error">No content found matching ' + $.winmgr.fragmentContent + '</div>');
+					win.error = 'No content found matching ' + $.winmgr.fragmentContent;
 					win.status = 'error';
+					$.winmgr.onSetStatus(id, win.status);
 				}
 				// }}}
 				// Process footer {{{
@@ -312,8 +335,9 @@ $.extend({winmgr: {
 				$.winmgr.onPostLoad(id);
 			},
 			error: function(jq, errText) {
-				win.element.html('<div class="alert alert-block alert-error">' + errText + '</div>');
+				win.error = errText;
 				win.status = 'error';
+				$.winmgr.onSetStatus(id, win.status);
 			},
 		});
 	},
