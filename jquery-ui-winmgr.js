@@ -179,28 +179,8 @@ $.extend({winmgr: {
 				$.winmgr.submitForm(settings.id, $(this));
 			})
 			.on('click', 'a[href]', function(e) {
-				var winId;
-				var me = $(this);
-				var href = me.attr('href');
-				if (href.substr(0, 1) == '#') // Inner page link - ignore
-					return;
-
 				e.preventDefault();
-				if ($(this).attr('target')) { // Open new window
-					var winOptions = {
-						title: settings.title,
-						url: href
-					};
-					if ($.winmgr.linkOptionsAttr) {
-						var importOptions = $(this).data($.winmgr.linkOptionsAttr);
-						if (importOptions)
-							$.extend(winOptions, importOptions);
-					}
-					winId = $.winmgr.spawn(winOptions);
-				} else { // Replace this window
-					winId = settings.id;
-					$.winmgr.go(settings.id, href);
-				}
+				$.winmgr.clickLink(settings.id, $(this));
 			});
 
 		// Fix: Catch all clicks for anything with type=submit and turn it into a form submission {{{
@@ -280,6 +260,31 @@ $.extend({winmgr: {
 			data[vals[key].name] = vals[key].value;
 		// console.log('SUBMIT', form.attr('action'), data);
 		$.winmgr.go(id, form.attr('action'), data);
+	},
+
+	/**
+	* Simulate clicking a link inside a dialog
+	* @param string id The id of the dialog the link belongs to
+	* @param object form The jQuery object of the link being clicked
+	*/
+	clickLink: function(id, link) {
+		var href = link.attr('href');
+		if (!href || href.substr(0, 1) == '#') // Inner page link - ignore
+			return;
+		if (link.attr('target')) { // Open new window
+			var winOptions = {
+				title: $.winmgr.dialogs[id].title,
+				url: href
+			};
+			if ($.winmgr.linkOptionsAttr) {
+				var importOptions = link.data($.winmgr.linkOptionsAttr);
+				if (importOptions)
+					$.extend(winOptions, importOptions);
+			}
+			$.winmgr.spawn(winOptions);
+		} else { // Replace this window
+			$.winmgr.go(id, href);
+		}
 	},
 
 	refresh: function(id) {
