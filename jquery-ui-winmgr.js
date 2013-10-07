@@ -14,6 +14,7 @@ $.extend({winmgr: {
 	dialogs: {}, // Storage for open dialogs
 
 	autoRefresh: 10000, // How often an auto-refresh action should take place in milliseconds (set to null to disable)
+	autoRefreshSubmit: false, // Refresh by submitting the inner form of the dialog (works best on edit frames). If no form is present the dialog is refreshed in the usual way
 
 	fragmentRedirect: ['#redirect'], // Use this as a redirection if present
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
@@ -60,7 +61,22 @@ $.extend({winmgr: {
 				&& $.winmgr.dialogs[d].autoRefresh // AutoRefresh is enabled AND
 				&& $.winmgr.dialogs[d].lastRefresh + $.winmgr.dialogs[d].autoRefresh <= now // Its due to be updated
 			) {
-				$.winmgr.refresh(d);
+				var refreshed = 0;
+				// Refresh via form submit {{{
+				if ($.winmgr.autoRefreshSubmit) { // Try to find a form to submit
+					var form = $.winmgr.dialogs[d].element.find('form').first();
+					if (form.length) {
+						refreshed = 1;
+						setTimeout(function() { // When the browser next has a free moment
+							$.winmgr.submitForm(d, form);
+						}, 0);
+					}
+				}
+				// }}}
+				// Submit in the normal way {{{
+				if (!refreshed)
+					$.winmgr.refresh(d);
+				// }}}
 			}
 		}
 		if ($.winmgr.autoRefresh)
@@ -129,13 +145,7 @@ $.extend({winmgr: {
 			})
 			.on('submit', 'form', function(e) {
 				e.preventDefault();
-				var form = $(this);
-				var vals = form.serializeArray();
-				var data = {};
-				for (var key in vals)
-					data[vals[key].name] = vals[key].value;
-				// console.log('SUBMIT', form.attr('action'), data);
-				$.winmgr.go(settings.id, form.attr('action'), data);
+				$.winmgr.submitForm(settings.id, $(this));
 			})
 			.on('click', 'a[href]', function(e) {
 				var me = $(this);
@@ -213,6 +223,22 @@ $.extend({winmgr: {
 		win.data = data;
 		$.winmgr.saveState();
 		$.winmgr.refresh(id);
+	},
+
+	/**
+	* Convenience function to submit a form within a dialog
+	* @param string id The id of the dialog the form belongs to
+	* @param object form The jQuery object of the form being submitted. If omitted the first form found within the dialog is used
+	*/
+	submitForm: function(id, form) {
+		if (!form)
+			var form = $.winmgr.dialogs[id].element.find('form').first();
+		var vals = form.serializeArray();
+		var data = {};
+		for (var key in vals)
+			data[vals[key].name] = vals[key].value;
+		// console.log('SUBMIT', form.attr('action'), data);
+		$.winmgr.go(id, form.attr('action'), data);
 	},
 
 	refresh: function(id) {
