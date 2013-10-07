@@ -22,6 +22,8 @@ $.extend({winmgr: {
 	fragmentFooter: ['#footer'], // Allow the window footer to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 	fragmentOptions: ['#winmgr'], // Allow the window options array to import this JSON on AJAX load (null to disable) - the first found element will be used if this is an array
 
+	linkOptionsAttr: 'winmgr', // When clicking a link import options (via setOptions()) from this data attribute e.g. <a href="somewhere" data-winmgr='{"title": "Hello World"}'>Link</a> - null to disable
+
 	// Event Hooks {{{
 	// All the below are the default handlers for various events.
 	// You can override any of these during the init() operation e.g. $.winmgr.init({onPreLoad: function() { // Do something else})
@@ -111,6 +113,8 @@ $.extend({winmgr: {
 
 	/**
 	* Create a new dialog window
+	* @param object Object properties to create the the window with
+	* @return string The ID of the newly created dialog
 	*/
 	spawn: function(options) {
 		var settings = $.extend({}, {
@@ -175,6 +179,7 @@ $.extend({winmgr: {
 				$.winmgr.submitForm(settings.id, $(this));
 			})
 			.on('click', 'a[href]', function(e) {
+				var winId;
 				var me = $(this);
 				var href = me.attr('href');
 				if (href.substr(0, 1) == '#') // Inner page link - ignore
@@ -182,11 +187,18 @@ $.extend({winmgr: {
 
 				e.preventDefault();
 				if ($(this).attr('target')) { // Open new window
-					$.winmgr.spawn({
+					var winOptions = {
 						title: settings.title,
 						url: href
-					});
+					};
+					if ($.winmgr.linkOptionsAttr) {
+						var importOptions = $(this).data($.winmgr.linkOptionsAttr);
+						if (importOptions)
+							$.extend(winOptions, importOptions);
+					}
+					winId = $.winmgr.spawn(winOptions);
 				} else { // Replace this window
+					winId = settings.id;
 					$.winmgr.go(settings.id, href);
 				}
 			});
@@ -236,6 +248,8 @@ $.extend({winmgr: {
 		if (settings.url) // Trigger data refresh if there is something to load
 			$.winmgr.refresh(settings.id);
 		$.winmgr.saveState();
+
+		return settings.id;
 	},
 
 	/**
