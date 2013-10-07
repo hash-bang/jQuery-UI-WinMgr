@@ -20,6 +20,7 @@ $.extend({winmgr: {
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
 	fragmentTitle: ['#title', 'title'], // Allow the window title to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
 	fragmentFooter: ['#footer'], // Allow the window footer to use this element contents on AJAX load (null to disable) - the first found element will be used if this is an array
+	fragmentOptions: ['#winmgr'], // Allow the window options array to import this JSON on AJAX load (null to disable) - the first found element will be used if this is an array
 
 	// Event Hooks {{{
 	// All the below are the default handlers for various events.
@@ -285,6 +286,21 @@ $.extend({winmgr: {
 			success: function(html) {
 				var body = $('<div></div>')
 					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incomming to avoid permission denied errors in IE
+				var saveState = 0;
+				// Process options {{{
+				if ($.winmgr.fragmentOptions) {
+					var optionsDOM = $.winmgr._findFirst($.winmgr.fragmentOptions, body);
+					if (optionsDOM.length) {
+						var importJSON = JSON.parse(optionsDOM.html());
+						if (!importJSON) {
+							console.warn('Invalid JSON when trying to import WinMgr options:', optionsDOM.html());
+						} else {
+							$.winmgr.setOptions(id, importJSON, 0);
+							saveState = 1;
+						}
+					}
+				}
+				// }}}
 				// Process redirection {{{
 				if ($.winmgr.fragmentRedirect) {
 					var redirectDOM = $.winmgr._findFirst($.winmgr.fragmentRedirect, body);
@@ -298,8 +314,10 @@ $.extend({winmgr: {
 				// Process window title {{{
 				if ($.winmgr.fragmentTitle) {
 					var titleDOM = $.winmgr._findFirst($.winmgr.fragmentTitle, body);
-					if (titleDOM.length)
-						$.winmgr.setTitle(id, titleDOM.html());
+					if (titleDOM.length) {
+						$.winmgr.setTitle(id, titleDOM.html(), 0);
+						saveState = 1;
+					}
 				}
 				// }}}
 				// Process content {{{
@@ -333,6 +351,8 @@ $.extend({winmgr: {
 				// }}}
 				win.lastRefresh = (new Date).getTime();
 				$.winmgr.onPostLoad(id);
+				if (saveState)
+					$.winmgr.saveState();
 			},
 			error: function(jq, errText) {
 				win.error = errText;
@@ -357,11 +377,103 @@ $.extend({winmgr: {
 	},
 
 	/**
+	* Elegantly change the options for a given dialog array
+	* This triggers the various handlers for certain options such as setTitle if a .title change is detected
+	* @param string id The ID of the dialog to change the options of
+	* @param array options The options to import
+	* @param bool save Whether to automatically trigger the saveState() call after importing (defaults to true)
+	*/
+	setOptions: function(id, options, save) {
+		var oNew = $.extend({}, options);
+		var oOld = $.winmgr.dialogs[id];
+		var change = {};
+
+		// .title {{{
+		if (oNew.title && oOld.title != oNew.title)
+			$.winmgr.setTitle(id, oNew.title, false);
+		delete(oNew.title);
+		// }}}
+		// .modal {{{
+		if (oNew.modal && oOld.modal != oNew.modal) {
+			$.winmgr.dialogs[id].element.dialog('option', 'modal', oNew.modal);
+			change.modal = oNew.modal
+		}
+		delete(oNew.modal);
+		// }}}
+		// .resizeable {{{
+		if (oNew.resizeable && oOld.resizeable != oNew.resizeable) {
+			$.winmgr.dialogs[id].element.dialog('option', 'resizeable', oNew.resizeable);
+			change.resizeable = oNew.resizeable
+		}
+		delete(oNew.resizeable);
+		// }}}
+		// .autoRefresh {{{
+		if (oNew.autoRefresh && oNew.autoRefesh != oOld.autoRefresh)
+			change.autoRefresh = oNew.autoRefresh;
+		delete(oNew.autoRefresh);
+		// }}}
+		// .location {{{
+		if (oNew.location) {
+			$.winmgr.move(id, oNew.location, 1, 0);
+			delete(oNew.location);
+		}
+		// }}}
+
+		if (Object.keys(change).length) // Anything left over?
+			console.warn('Cannot import unknown options to WinMgr ID:', id, change);
+
+		$.extend($.winmgr.dialogs[id], change);
+		if (save || save === undefined)
+			$.winmgr.saveState();
+	},
+
+	/**
 	* Close and release the given dialog
 	* @param string id The ID of the dialog to close
 	*/
 	close: function(id) {
 		$.winmgr.dialogs[id].element.dialog('close');
+	},
+
+	/**
+	* Relocate a window based on its location properties (left,top,width,height)
+	* @param string The ID of the dialog to move
+	* @param object The location object to use when moving
+	* @param bool animate Whether to animate the move operation
+	* @param bool save Whether to trigger $.winmgr.saveState() after moving - defaults to true
+	*/
+	move: function(id, location, animate, save) {
+		$.extend($.winmgr.dialogs[id].location, location);
+		var el = $.winmgr.dialogs[id].element;
+		el.dialog('option', 'position',
+			location.left || location.top ?
+				[location.left, location.top] :
+				{my: 'center center', at: 'center center', of: $.winmgr.baseParent}
+		);
+		if (location.width)
+			el.dialog('option', 'width', location.width);
+		if (location.height)
+			el.dialog('option', 'height', location.height);
+			
+		if (save || save === undefined)
+			$.winmgr.saveState();
+	},
+
+	getByTitle: function(title) {
+		for (var id in $.winmgr.dialogs) {
+			if (
+				typeof title == 'string' &&
+				$.winmgr.dialogs[id].title == title
+			) {
+				return id;
+			} else if (
+				typeof title == 'object' && // Probably a RegExp
+				title.exec($.winmgr.dialogs[id].title)
+			) {
+				return id;
+			}
+		}
+		return null;
 	},
 
 	saveState: function() {
