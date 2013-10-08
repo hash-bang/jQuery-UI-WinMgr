@@ -250,15 +250,25 @@ $.extend({winmgr: {
 	* Convenience function to submit a form within a dialog
 	* @param string id The id of the dialog the form belongs to
 	* @param object form The jQuery object of the form being submitted. If omitted the first form found within the dialog is used
+	* @param bool incFooter Include any elements found in the footer in the post (defaults to true)
 	*/
-	submitForm: function(id, form) {
+	submitForm: function(id, form, incFooter) {
 		if (!form)
-			var form = $.winmgr.dialogs[id].element.find('form').first();
-		var vals = form.serializeArray();
+			form = $.winmgr.dialogs[id].element.find('form').first();
+
 		var data = {};
-		for (var key in vals)
-			data[vals[key].name] = vals[key].value;
-		// console.log('SUBMIT', form.attr('action'), data);
+
+		form.find('input[name], select[name], textarea[name]').each(function() {
+			data[$(this).attr('name')] = $(this).val();
+		});
+
+		if (incFooter || incFooter === undefined)
+			$.winmgr.dialogs[id].element.closest('.ui-dialog').find('.ui-dialog-buttonpane').find('input[name], select[name], textarea[name]').each(function() {
+				data[$(this).attr('name')] = $(this).val();
+			});
+
+		console.log('Submit', form.attr('action'), data);
+
 		$.winmgr.go(id, form.attr('action'), data);
 	},
 
@@ -339,6 +349,20 @@ $.extend({winmgr: {
 					}
 				}
 				// }}}
+				// Process footer {{{
+				var footer = $.winmgr._findFirst($.winmgr.fragmentFooter, body);
+				if (footer.length) {
+					var dialog = win.element.closest('.ui-dialog');
+					var dialogFooter = dialog.find('.ui-dialog-buttonpane');
+					if (!dialogFooter.length)
+						dialogFooter = $('<div></div>')
+							.addClass('ui-dialog-buttonpane ui-widget-content ui-helper-clearfix')
+							.appendTo(dialog);
+
+					dialogFooter.html(footer.html());
+					footer.remove();
+				}
+				// }}}
 				// Process content {{{
 				var content = $.winmgr._findFirst($.winmgr.fragmentContent, body);
 				if (content.length) {
@@ -353,19 +377,6 @@ $.extend({winmgr: {
 					win.error = 'No content found matching ' + $.winmgr.fragmentContent;
 					win.status = 'error';
 					$.winmgr.onSetStatus(id, win.status);
-				}
-				// }}}
-				// Process footer {{{
-				var footer = $.winmgr._findFirst($.winmgr.fragmentFooter, body);
-				if (footer.length) {
-					var dialog = win.element.closest('.ui-dialog');
-					var dialogFooter = dialog.find('.ui-dialog-buttonpane');
-					if (!dialogFooter.length)
-						dialogFooter = $('<div></div>')
-							.addClass('ui-dialog-buttonpane ui-widget-content ui-helper-clearfix')
-							.appendTo(dialog);
-
-					dialogFooter.html(footer.html());
 				}
 				// }}}
 				win.lastRefresh = (new Date).getTime();
