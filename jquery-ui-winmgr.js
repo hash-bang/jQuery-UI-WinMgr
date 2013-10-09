@@ -281,7 +281,7 @@ $.extend({winmgr: {
 		var href = link.attr('href');
 		if (!href || href.substr(0, 1) == '#') // Inner page link - ignore
 			return;
-		if (link.attr('target')) { // Open new window
+		if (link.data($.winmgr.linkOptionsAttr)) { // Open new window
 			var winOptions = {
 				title: $.winmgr.dialogs[id].title,
 				url: href
