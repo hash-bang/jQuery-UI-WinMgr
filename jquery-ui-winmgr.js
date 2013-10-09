@@ -286,11 +286,10 @@ $.extend({winmgr: {
 				title: $.winmgr.dialogs[id].title,
 				url: href
 			};
-			if ($.winmgr.linkOptionsAttr) {
-				var importOptions = link.data($.winmgr.linkOptionsAttr);
-				if (importOptions)
-					$.extend(winOptions, importOptions);
-			}
+			var importOptions = link.data($.winmgr.linkOptionsAttr);
+			if (importOptions)
+				$.extend(winOptions, importOptions);
+			
 			$.winmgr.spawn(winOptions);
 		} else { // Replace this window
 			$.winmgr.go(id, href);
