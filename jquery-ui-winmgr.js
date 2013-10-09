@@ -147,7 +147,7 @@ $.extend({winmgr: {
 				modal: settings.modal,
 				resizeable: settings.resizable,
 				title: settings.title,
-				position: settings.location.left || settings.location.top ? [settings.location.left, settings.location.top] : {my: 'center center', at: 'center center', of: $.winmgr.baseParent},
+				position: $.winmgr._getPosition(settings.location),
 				close: function(e, ui) {
 					delete($.winmgr.dialogs[settings.id]);
 					$.winmgr.saveState();
@@ -475,11 +475,7 @@ $.extend({winmgr: {
 	move: function(id, location, animate, save) {
 		$.extend($.winmgr.dialogs[id].location, location);
 		var el = $.winmgr.dialogs[id].element;
-		el.dialog('option', 'position',
-			location.left || location.top ?
-				[location.left, location.top] :
-				{my: 'center center', at: 'center center', of: $.winmgr.baseParent}
-		);
+		el.dialog('option', 'position', $.winmgr._getPosition(location));
 		if (location.width)
 			el.dialog('option', 'width', location.width);
 		if (location.height)
@@ -487,6 +483,45 @@ $.extend({winmgr: {
 			
 		if (save || save === undefined)
 			$.winmgr.saveState();
+	},
+
+	/**
+	* Helper to position windows
+	* When given a location object ({left, top, width, height}) attempts to place the window
+	* e.g.
+	*	{left: center, top: center}
+	*	{left: 10, top: 10}
+	*	{left: -50, top: 10} // Position -50 of full parent width
+	*
+	* @param object A jQuery UI position object
+	*/
+	_getPosition: function(location) {
+		var out = { of: $.winmgr.baseParent };
+		var myX = 'left';
+		var myY = 'top';
+		var atX = 0;
+		var atY = 0;
+		if (location.left > 0) {
+			atX = 'left+' + location.left;
+		} else if (location.left < 0) {
+			myX = 'right';
+			atX = 'right-' + location.left;
+		} else {
+			myX = 'center';
+			atX = 'center';
+		}
+
+		if (location.top > 0) {
+			atY = 'top+' + location.top;
+		} else if (location.top < 0) {
+			myY = 'bottom';
+			atY = 'bottom-' + location.top;
+		} else {
+			myY = 'center';
+			atY = 'center';
+		}
+
+		return {my: myX + ' ' + myY, at: atX + ' ' + atY, of: $.winmgr.baseParent};
 	},
 
 	getByTitle: function(title) {
