@@ -179,8 +179,8 @@ $.extend({winmgr: {
 				$.winmgr.submitForm(settings.id, $(this));
 			})
 			.on('click', 'a[href]', function(e) {
-				e.preventDefault();
-				$.winmgr.clickLink(settings.id, $(this));
+				if ($.winmgr.clickLink(settings.id, $(this)))
+					e.preventDefault();
 			});
 
 		// Fix: Catch all clicks for anything with type=submit and turn it into a form submission {{{
@@ -276,6 +276,7 @@ $.extend({winmgr: {
 	* Simulate clicking a link inside a dialog
 	* @param string id The id of the dialog the link belongs to
 	* @param object form The jQuery object of the link being clicked
+	* @return bool Whether the link was dealt with by WinMgr or FALSE if the browser should handle it normally
 	*/
 	clickLink: function(id, link) {
 		var href = link.attr('href');
@@ -291,8 +292,12 @@ $.extend({winmgr: {
 				$.extend(winOptions, importOptions);
 			
 			$.winmgr.spawn(winOptions);
+			return true;
+		} else if (link.attr('target')) { // Has a target - let the browser deal with it
+			return false;
 		} else { // Replace this window
 			$.winmgr.go(id, href);
+			return true;
 		}
 	},
 
