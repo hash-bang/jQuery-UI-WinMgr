@@ -23,6 +23,7 @@ $.extend({winmgr: {
 	fragmentOptions: ['#winmgr'], // Allow the window options array to import this JSON on AJAX load (null to disable) - the first found element will be used if this is an array
 
 	linkOptionsAttr: 'winmgr', // When clicking a link import options (via setOptions()) from this data attribute e.g. <a href="somewhere" data-winmgr='{"title": "Hello World"}'>Link</a> - null to disable
+	globalHandler: true, // Register a global click handler for anything with the data attribute specified in $.winmgr.linkOptionsAttr. This makes WinMgr handle links outside normal dialogs if they have [data-winmgr] (the default) setup
 
 	// Event Hooks {{{
 	// All the below are the default handlers for various events.
@@ -58,6 +59,11 @@ $.extend({winmgr: {
 			$.winmgr.recoverState();
 		if ($.winmgr.autoRefresh)
 			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefresh);
+		if ($.winmgr.globalHandler)
+			$(document).on('click', 'a[data-' + $.winmgr.linkOptionsAttr + ']', function(e) {
+				e.preventDefault();
+				$.winmgr.clickLink(null, $(this));
+			});
 	},
 
 	/**
@@ -283,8 +289,8 @@ $.extend({winmgr: {
 
 	/**
 	* Simulate clicking a link inside a dialog
-	* @param string id The id of the dialog the link belongs to
-	* @param object form The jQuery object of the link being clicked
+	* @param string id Optional id of the dialog the link belongs to
+	* @param object link The jQuery object of the link being clicked
 	* @return bool Whether the link was dealt with by WinMgr or FALSE if the browser should handle it normally
 	*/
 	clickLink: function(id, link) {
@@ -293,7 +299,7 @@ $.extend({winmgr: {
 			return;
 		if (link.data($.winmgr.linkOptionsAttr)) { // Open new window
 			var winOptions = {
-				title: $.winmgr.dialogs[id].title,
+				title: id ? $.winmgr.dialogs[id].title : 'Loading...',
 				url: href
 			};
 			var importOptions = link.data($.winmgr.linkOptionsAttr);
@@ -305,7 +311,13 @@ $.extend({winmgr: {
 		} else if (link.attr('target')) { // Has a target - let the browser deal with it
 			return false;
 		} else { // Replace this window
-			$.winmgr.go(id, href);
+			if (id) {
+				$.winmgr.go(id, href);
+			} else { // No id, no options - just open a new window and hope for the best
+				$.winmgr.spawn({
+					url: href
+				});
+			}
 			return true;
 		}
 	},
