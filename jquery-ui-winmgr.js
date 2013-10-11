@@ -392,7 +392,7 @@ $.extend({winmgr: {
 				// Process content {{{
 				var content = $.winmgr._findFirst($.winmgr.fragmentContent, body);
 				if (content.length) {
-					if (!$.winmgr.autoRefershSkip || win.element.html() != content.html()) {
+					if (!$.winmgr.autoRefreshSkip || win.element.html() != content.html()) {
 						win.element.html(content.html());
 						if (win.scroll.top)
 							win.element.scrollTop(win.scroll.top);
