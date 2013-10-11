@@ -151,11 +151,15 @@ $.extend({winmgr: {
 				close: function(e, ui) {
 					delete($.winmgr.dialogs[settings.id]);
 					$.winmgr.saveState();
+					if ($.winmgr.baseOptions.close)
+						$.winmgr.baseOptions.close.call(this, e, ui);
 				},
 				dragStop: function(e, ui) {
 					$.winmgr.dialogs[settings.id].location.left = ui.position.left;
 					$.winmgr.dialogs[settings.id].location.top = ui.position.top;
 					$.winmgr.saveState();
+					if ($.winmgr.baseOptions.dragStop)
+						$.winmgr.baseOptions.dragStop.call(this, e, ui);
 				},
 				resizeStop: function(e, ui) {
 					$.winmgr.dialogs[settings.id].location.left = ui.position.left;
@@ -163,6 +167,8 @@ $.extend({winmgr: {
 					$.winmgr.dialogs[settings.id].location.width = ui.size.width;
 					$.winmgr.dialogs[settings.id].location.height = ui.size.height;
 					$.winmgr.saveState();
+					if ($.winmgr.baseOptions.resizeStop)
+						$.winmgr.baseOptions.resizeStop.call(this, e, ui);
 				}
 			}))
 			.on('scroll', function(e) {
