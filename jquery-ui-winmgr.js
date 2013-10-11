@@ -231,6 +231,9 @@ $.extend({winmgr: {
 
 		$.winmgr.dialogs[settings.id] = settings;
 
+		if (settings.title)
+			$.winmgr.setTitle(settings.id, settings.title, false);
+
 		if (settings.url) // Trigger data refresh if there is something to load
 			$.winmgr.refresh(settings.id);
 		$.winmgr.saveState();
