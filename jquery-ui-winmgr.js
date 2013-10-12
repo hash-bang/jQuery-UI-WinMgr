@@ -15,7 +15,7 @@ $.extend({winmgr: {
 
 	autoRefresh: 10000, // How often an auto-refresh action should take place in milliseconds (set to null to disable)
 	autoRefreshSubmit: false, // Refresh by submitting the inner form of the dialog (works best on edit frames). If no form is present the dialog is refreshed in the usual way
-	autoRefreshSkip: true, // Skip updating the content (and triggering onSetStatus if the incomming content is identical), if FALSE the content will always be overwritten
+	autoRefreshSkip: md5, // Comparent content using this function and skip updating the content (and triggering onSetStatus if the incomming content is identical), if null the content will always be overwritten
 
 	fragmentRedirect: ['#redirect'], // Use this as a redirection if present
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
@@ -392,15 +392,20 @@ $.extend({winmgr: {
 				// Process content {{{
 				var content = $.winmgr._findFirst($.winmgr.fragmentContent, body);
 				if (content.length) {
-					if (!$.winmgr.autoRefreshSkip || win.element.html() != content.html()) {
-						win.element.html(content.html());
-						if (win.scroll.top)
-							win.element.scrollTop(win.scroll.top);
-						if (win.scroll.left)
-							win.element.scrollLeft(win.scroll.left);
-						win.status = 'idle';
-						$.winmgr.onSetStatus(id, win.status);
+					if ($.winmgr.autoRefreshSkip) { // Compute hashes and compare
+						var thisHash = $.winmgr.autoRefreshSkip(content.html());
+						var oldHash = $.winmgr.dialogs[id] ? oldHash = $.winmgr.dialogs[id].hash : null;
+						win.hash = thisHash;
+						if (thisHash == oldHash) // If hashes match - dont update content
+							return;
 					}
+					win.element.html(content.html());
+					if (win.scroll.top)
+						win.element.scrollTop(win.scroll.top);
+					if (win.scroll.left)
+						win.element.scrollLeft(win.scroll.left);
+					win.status = 'idle';
+					$.winmgr.onSetStatus(id, win.status);
 				} else {
 					win.error = 'No content found matching ' + $.winmgr.fragmentContent;
 					win.status = 'error';
