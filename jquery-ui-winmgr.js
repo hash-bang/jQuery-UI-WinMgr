@@ -76,7 +76,9 @@ $.extend({winmgr: {
 			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefresh);
 		if ($.winmgr.globalHandler)
 			$(document).on('click', 'a[data-' + $.winmgr.linkOptionsAttr + ']', function(e) {
-				$.winmgr.selectedDialog = $(this).closest('.ui-dialog').find('.ui-dialog-content').attr('id');
+				var dialogId = $(this).closest('.ui-dialog').find('.ui-dialog-content').attr('id');
+				if (dialogId)
+					$.winmgr.selectedDialog = dialogId;
 				if ($.winmgr.clickLink($.winmgr.selectedDialog, $(this)))
 					e.preventDefault();
 			});
@@ -326,8 +328,10 @@ $.extend({winmgr: {
 			if (importOptions)
 				$.extend(winOptions, importOptions);
 
-			if (winOptions.replace && id) {
+			if (winOptions.replace && id) { // Replace and we have an active id
 				$.winmgr.go(id, href);
+			} else if (winOptions.replace && $.winmgr.dialogs[$.winmgr.selectedDialog]) { // Replace and we have no id BUT the selected dialog flag is set and it exists - use it
+				$.winmgr.go($.winmgr.selectedDialog, href);
 			} else {
 				$.winmgr.spawn(winOptions);
 			}
