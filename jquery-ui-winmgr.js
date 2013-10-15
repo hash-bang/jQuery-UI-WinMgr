@@ -8,10 +8,24 @@ $.extend({winmgr: {
 	baseData: { // Merge all outgoing AJAX requests with the following POST data
 		'jquery-winmgr': '1'
 	},
+	baseLocation: {
+		width: 300,
+		height: 400,
+		left: 'center',
+		top: 'center',
+		padTop: 10,
+		padBottom: 10,
+		padLeft: 10,
+		padRight: 10,
+		animate: false,
+		animateDuration: 'slow',
+		animateEasing: 'swing'
+	},
 
 	recover: true, // Re-open windows on page refresh
 
 	dialogs: {}, // Storage for open dialogs
+	selectedDialog: null, // Last dialog recieving an event (also a quick way to get the dialog that was last interacted with)
 
 	autoRefresh: 10000, // How often an auto-refresh action should take place in milliseconds (set to null to disable)
 	autoRefreshSubmit: false, // Refresh by submitting the inner form of the dialog (works best on edit frames). If no form is present the dialog is refreshed in the usual way
@@ -147,14 +161,20 @@ $.extend({winmgr: {
 				.attr('id', settings.id)
 				.appendTo($.winmgr.baseParent);
 
+		settings.location = {left: settings.location.left || settings.left, top: settings.location.top || settings.top, width: settings.location.width || settings.width, height: settings.location.height || settings.height};
+		delete(settings.left);
+		delete(settings.top);
+		delete(settings.width);
+		delete(settings.height);
+
 		settings.element
 			.dialog($.extend({}, $.winmgr.baseOptions, {
 				width: settings.location && settings.location.width ? settings.location.width : settings.width,
 				height: settings.location && settings.location.height ? settings.location.height : settings.height,
 				modal: settings.modal,
 				resizeable: settings.resizable,
+				position: $.winmgr.move(settings.id, settings.location, false),
 				title: settings.title,
-				position: $.winmgr._getPosition(settings.location),
 				close: function(e, ui) {
 					delete($.winmgr.dialogs[settings.id]);
 					$.winmgr.saveState();
@@ -192,6 +212,7 @@ $.extend({winmgr: {
 				$.winmgr.submitForm(settings.id, $(this));
 			})
 			.on('click', 'a[href]', function(e) {
+				$.winmgr.selectedDialog = $(this).closest('.ui-dialog').find('.ui-dialog-content').attr('id');
 				if ($.winmgr.clickLink(settings.id, $(this)))
 					e.preventDefault();
 			});
@@ -229,12 +250,6 @@ $.extend({winmgr: {
 			settings.location.left = pos.left;
 			settings.location.left = pos.top;
 		}
-
-		settings.location = {left: settings.location.left || settings.left, top: settings.location.top || settings.top, width: settings.location.width || settings.width, height: settings.location.height || settings.height};
-		delete(settings.left);
-		delete(settings.top);
-		delete(settings.width);
-		delete(settings.height);
 
 		$.winmgr.dialogs[settings.id] = settings;
 
@@ -298,7 +313,7 @@ $.extend({winmgr: {
 		var href = link.attr('href');
 		if (!href || href.substr(0, 1) == '#') // Inner page link - ignore
 			return;
-		if (link.data($.winmgr.linkOptionsAttr)) { // Open new window
+		if (link.data($.winmgr.linkOptionsAttr)) { // Has the magical linkOptionsAttr (e.g. '<a href="#" data-winmgr="{}">')
 			var winOptions = {
 				title: id ? $.winmgr.dialogs[id].title : 'Loading...',
 				url: href
@@ -306,9 +321,15 @@ $.extend({winmgr: {
 			var importOptions = link.data($.winmgr.linkOptionsAttr);
 			if (importOptions)
 				$.extend(winOptions, importOptions);
-			
-			$.winmgr.spawn(winOptions);
+
+			if (winOptions.replace && id) {
+				$.winmgr.go(id, href);
+			} else {
+				$.winmgr.spawn(winOptions);
+			}
 			return true;
+		} else if (href.match(/^(javascript|mailto):/)) { // Is something weird - let the browser deal with it
+			return false;
 		} else if (link.attr('target')) { // Has a target - let the browser deal with it
 			return false;
 		} else { // Replace this window
@@ -477,7 +498,7 @@ $.extend({winmgr: {
 		// }}}
 		// .location {{{
 		if (oNew.location) {
-			$.winmgr.move(id, oNew.location, 1, 0);
+			$.winmgr.move(id, oNew.location, 0);
 			delete(oNew.location);
 		}
 		// }}}
@@ -502,59 +523,72 @@ $.extend({winmgr: {
 	* Relocate a window based on its location properties (left,top,width,height)
 	* @param string The ID of the dialog to move
 	* @param object The location object to use when moving
-	* @param bool animate Whether to animate the move operation
 	* @param bool save Whether to trigger $.winmgr.saveState() after moving - defaults to true
 	*/
-	move: function(id, location, animate, save) {
-		$.extend($.winmgr.dialogs[id].location, location);
-		var el = $.winmgr.dialogs[id].element;
-		el.dialog('option', 'position', $.winmgr._getPosition(location));
-		if (location.width)
-			el.dialog('option', 'width', location.width);
-		if (location.height)
-			el.dialog('option', 'height', location.height);
+	move: function(id, location, save) {
+		var loc = $.extend({}, $.winmgr.baseLocation, $.winmgr.dialogs[id] ? $.winmgr.dialogs[id].location : {}, location);
+		var locFinal = {left: 0, top: 0, width: loc.width, height: loc.height};
+		var parentWidth = $.winmgr.baseParent.width();
+		var parentHeight = $.winmgr.baseParent.height();
+
+		if (loc.width > parentWidth - loc.padRight - loc.padLeft)
+			locFinal.width = parentWidth - loc.padRight - loc.padLeft;
+
+		if (loc.height > parentHeight - loc.padBottom - loc.padTop)
+			locFinal.height = parentHeight - loc.padBottom - loc.padTop;
+
+		if (loc.left < 0) {
+			locFinal.left = parentWidth - loc.padRight - locFinal.width - loc.left;
+		} else if (loc.left > 0) {
+			locFinal.left = loc.left + loc.padLeft;
+		} else if (loc.left == 'left' || loc.left == 0) {
+			locFinal.left = loc.padLeft;
+		} else if (loc.left == 'right') {
+			locFinal.left = parentWidth - loc.padRight - locFinal.width;
+		} else if (loc.left == 'center') {
+			locFinal.left = loc.padLeft + (parentWidth - locFinal.width)/2;
+		} else if (loc.left == 'random') {
+			locFinal.left = loc.padLeft + parseInt(Math.random() * (parentWidth - loc.padLeft - loc.padRight - locFinal.width));
+		}
+
+		if (loc.top < 0) {
+			locFinal.top = parentHeight - loc.padBottom - locFinal.height - loc.top;
+		} else if (loc.top > 0) {
+			locFinal.top = loc.top + loc.padTop;
+		} else if (loc.top == 'top' || loc.top == 0) {
+			locFinal.top = loc.padTop;
+		} else if (loc.top == 'bottom') {
+			locFinal.top = parentHeight - loc.padBottom - locFinal.height;
+		} else if (loc.top == 'center') {
+			locFinal.top = loc.padTop + (parentHeight - locFinal.height)/2;
+		} else if (loc.top == 'random') {
+			locFinal.top = loc.padTop + parseInt(Math.random() * (parentHeight - loc.padTop - loc.padBottom - locFinal.height));
+		}
+
+		if ($.winmgr.dialogs[id]) { // Does the dialog exist yet?
+			if (loc.animate) { // Animate the move
+				$.winmgr.dialogs[id].element.closest('.ui-dialog').animate({
+					left: locFinal.left,
+					top: locFinal.top,
+					width: locFinal.width,
+					height: locFinal.height
+				}, loc.animateDuration, loc.animateEasing);
+			} else { // Snap move with no animation
+				$.winmgr.dialogs[id].element.closest('.ui-dialog').css({
+					left: locFinal.left,
+					top: locFinal.top,
+					width: locFinal.width,
+					height: locFinal.height
+				});
+			}
+
+			$.winmgr.dialogs[id].location = loc;
+
+			if (save || save === undefined)
+				$.winmgr.saveState();
+		}
 			
-		if (save || save === undefined)
-			$.winmgr.saveState();
-	},
-
-	/**
-	* Helper to position windows
-	* When given a location object ({left, top, width, height}) attempts to place the window
-	* e.g.
-	*	{left: center, top: center}
-	*	{left: 10, top: 10}
-	*	{left: -50, top: 10} // Position -50 of full parent width
-	*
-	* @param object A jQuery UI position object
-	*/
-	_getPosition: function(location) {
-		var out = { of: $.winmgr.baseParent };
-		var myX = 'left';
-		var myY = 'top';
-		var atX = 0;
-		var atY = 0;
-		if (location.left > 0) {
-			atX = 'left+' + location.left;
-		} else if (location.left < 0) {
-			myX = 'right';
-			atX = 'right-' + location.left;
-		} else {
-			myX = 'center';
-			atX = 'center';
-		}
-
-		if (location.top > 0) {
-			atY = 'top+' + location.top;
-		} else if (location.top < 0) {
-			myY = 'bottom';
-			atY = 'bottom-' + location.top;
-		} else {
-			myY = 'center';
-			atY = 'center';
-		}
-
-		return {my: myX + ' ' + myY, at: atX + ' ' + atY, of: $.winmgr.baseParent};
+		return [locFinal.left, locFinal.top, locFinal.width, locFinal.height];
 	},
 
 	getByTitle: function(title) {
