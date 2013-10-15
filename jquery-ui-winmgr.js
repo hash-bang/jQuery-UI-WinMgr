@@ -168,13 +168,16 @@ $.extend({winmgr: {
 		delete(settings.width);
 		delete(settings.height);
 
+		// jQuery-UI dialogs insist on setting the original location, therefore we must populate one from our own internal system
+		var tempLocation = $.winmgr.move(settings.id, settings.location, false);
+
 		settings.element
 			.dialog($.extend({}, $.winmgr.baseOptions, {
-				width: settings.location && settings.location.width ? settings.location.width : settings.width,
-				height: settings.location && settings.location.height ? settings.location.height : settings.height,
 				modal: settings.modal,
 				resizeable: settings.resizable,
-				position: $.winmgr.move(settings.id, settings.location, false),
+				position: tempLocation,
+				width: tempLocation[2],
+				height: tempLocation[3],
 				title: settings.title,
 				close: function(e, ui) {
 					delete($.winmgr.dialogs[settings.id]);
@@ -588,7 +591,7 @@ $.extend({winmgr: {
 			if (save || save === undefined)
 				$.winmgr.saveState();
 		}
-			
+
 		return [locFinal.left, locFinal.top, locFinal.width, locFinal.height];
 	},
 
