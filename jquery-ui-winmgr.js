@@ -76,8 +76,9 @@ $.extend({winmgr: {
 			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefresh);
 		if ($.winmgr.globalHandler)
 			$(document).on('click', 'a[data-' + $.winmgr.linkOptionsAttr + ']', function(e) {
-				e.preventDefault();
-				$.winmgr.clickLink(null, $(this));
+				$.winmgr.selectedDialog = $(this).closest('.ui-dialog').find('.ui-dialog-content').attr('id');
+				if ($.winmgr.clickLink($.winmgr.selectedDialog, $(this)))
+					e.preventDefault();
 			});
 	},
 
@@ -213,7 +214,7 @@ $.extend({winmgr: {
 			})
 			.on('click', 'a[href]', function(e) {
 				$.winmgr.selectedDialog = $(this).closest('.ui-dialog').find('.ui-dialog-content').attr('id');
-				if ($.winmgr.clickLink(settings.id, $(this)))
+				if (!$.winmgr.globalHandler && $.winmgr.clickLink(settings.id, $(this)))
 					e.preventDefault();
 			});
 
