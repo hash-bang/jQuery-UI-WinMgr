@@ -321,14 +321,14 @@ $.extend({winmgr: {
 			return;
 		if (link.data($.winmgr.linkOptionsAttr)) { // Has the magical linkOptionsAttr (e.g. '<a href="#" data-winmgr="{}">')
 			var winOptions = {
-				title: id ? $.winmgr.dialogs[id].title : 'Loading...',
+				title: id && $.winmgr.dialogs[id] ? $.winmgr.dialogs[id].title : 'Loading...',
 				url: href
 			};
 			var importOptions = link.data($.winmgr.linkOptionsAttr);
 			if (importOptions)
 				$.extend(winOptions, importOptions);
 
-			if (winOptions.replace && id) { // Replace and we have an active id
+			if (winOptions.replace && id && $.winmgr.dialogs[id]) { // Replace and we have an active id (and the window exists)
 				$.winmgr.go(id, href);
 			} else if (winOptions.replace && $.winmgr.dialogs[$.winmgr.selectedDialog]) { // Replace and we have no id BUT the selected dialog flag is set and it exists - use it
 				$.winmgr.go($.winmgr.selectedDialog, href);
@@ -341,7 +341,7 @@ $.extend({winmgr: {
 		} else if (link.attr('target')) { // Has a target - let the browser deal with it
 			return false;
 		} else { // Replace this window
-			if (id) {
+			if (id && $.winmgr.dialogs[id]) {
 				$.winmgr.go(id, href);
 			} else { // No id, no options - just open a new window and hope for the best
 				$.winmgr.spawn({
