@@ -37,7 +37,7 @@ $.extend({winmgr: {
 
 	autoRefresh: 10000, // How often an auto-refresh action should take place in milliseconds (set to null to disable)
 	autoRefreshSubmit: false, // Refresh by submitting the inner form of the dialog (works best on edit frames). If no form is present the dialog is refreshed in the usual way
-	autoRefreshSkip: md5, // Comparent content using this function and skip updating the content (and triggering onSetStatus if the incomming content is identical), if null the content will always be overwritten
+	autoRefreshSkip: md5, // Comparent content using this function and skip updating the content (and triggering onSetStatus if the incoming content is identical), if null the content will always be overwritten
 
 	fragmentRedirect: ['#redirect'], // Use this as a redirection if present
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
@@ -391,7 +391,7 @@ $.extend({winmgr: {
 			type: 'POST',
 			success: function(html) {
 				var body = $('<div></div>')
-					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incomming to avoid permission denied errors in IE
+					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incoming to avoid permission denied errors in IE
 				var saveState = 0;
 				// Process options {{{
 				if ($.winmgr.fragmentOptions) {
@@ -439,7 +439,7 @@ $.extend({winmgr: {
 
 						dialogFooter.html(footer.html());
 						footer.remove();
-					} else { // No incomming footer - remove from dialog
+					} else { // No incoming footer - remove from dialog
 						dialogFooter.empty();
 					}
 				}
