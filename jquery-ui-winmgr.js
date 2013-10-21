@@ -22,6 +22,14 @@ $.extend({winmgr: {
 		animateEasing: 'swing'
 	},
 
+	/**
+	* An array of hashes with each hash as the various window options
+	* Each hash should also contain a key called 're' which matches the URL of the window.
+	* If a window is spawned with NO OPTIONS its url will be checked against each item in this array and, should the URL match the 're' it will inherit those options
+	* @var array
+	*/
+	templates: [],
+
 	recover: true, // Re-open windows on page refresh
 
 	dialogs: {}, // Storage for open dialogs
@@ -141,6 +149,20 @@ $.extend({winmgr: {
 	* @return string The ID of the newly created dialog
 	*/
 	spawn: function(options) {
+		// Inherit options from $.winmgr.templates {{{
+		var templateMatch = {};
+		for (var t in $.winmgr.templates) {
+			var template = $.winmgr.templates[t];
+			if (typeof template.re == 'string' && options.url == template.re) {
+				templateMatch = template;
+				break;
+			} else if (typeof template.re == 'object' && template.re.exec(options.url)) {
+				templateMatch = template;
+				break;
+			}
+		}
+		// }}}
+
 		var settings = $.extend({}, {
 			// WARNING: If any new options are added remember to update the list in $.winmgr.saveState so that it gets saved
 			height: 200,
@@ -156,7 +178,7 @@ $.extend({winmgr: {
 			lastRefresh: 0,
 			error: null, // The last error (string) to occur - used by onSetStatus(id, 'error') to display something helpful
 			scroll: {top: 0, left: 0} // Default scroll offsets (mainly used to restore scrolling to windows after refresh / restores)
-		}, options);
+		}, templateMatch, options);
 		if (!settings.id)
 			settings.id = $.winmgr.getUniqueId($.winmgr.basePrefix);
 		if (!settings.element)
