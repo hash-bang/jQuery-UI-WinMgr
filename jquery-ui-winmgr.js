@@ -642,6 +642,23 @@ $.extend({winmgr: {
 		return null;
 	},
 
+	getByURL: function(url) {
+		for (var id in $.winmgr.dialogs) {
+			if (
+				typeof url == 'string' &&
+				$.winmgr.dialogs[id].url == url
+			) {
+				return id;
+			} else if (
+				typeof url == 'object' && // Probably a RegExp
+				url.exec($.winmgr.dialogs[id].url)
+			) {
+				return id;
+			}
+		}
+		return null;
+	},
+
 	saveState: function() {
 		if (!$.winmgr.recover)
 			return;
