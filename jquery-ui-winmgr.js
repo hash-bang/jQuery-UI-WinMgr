@@ -35,9 +35,13 @@ $.extend({winmgr: {
 	dialogs: {}, // Storage for open dialogs
 	selectedDialog: null, // Last dialog recieving an event (also a quick way to get the dialog that was last interacted with)
 
-	autoRefresh: 10000, // How often an auto-refresh action should take place in milliseconds (set to null to disable)
+	autoRefresh: 10000, // The default auto-refresh for new windows in milliseconds (set to null to disable)
+	autoRefreshPollDelay: 1000, // How often we should check all windows (i.e. the global poll rate)
 	autoRefreshSubmit: false, // Refresh by submitting the inner form of the dialog (works best on edit frames). If no form is present the dialog is refreshed in the usual way
 	autoRefreshSkip: md5, // Comparent content using this function and skip updating the content (and triggering onSetStatus if the incoming content is identical), if null the content will always be overwritten
+
+	preserveFocus: true, // When redrawing a page try to recover the focus state as well
+	preserveFooter: false,
 
 	fragmentRedirect: ['#redirect'], // Use this as a redirection if present
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
@@ -81,7 +85,7 @@ $.extend({winmgr: {
 		if ($.winmgr.recover)
 			$.winmgr.recoverState();
 		if ($.winmgr.autoRefresh)
-			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefresh);
+			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefreshPollDelay);
 		if ($.winmgr.globalHandler)
 			$(document).on('click', 'a[data-' + $.winmgr.linkOptionsAttr + ']', function(e) {
 				var dialogId = $(this).closest('.ui-dialog').find('.ui-dialog-content').attr('id');
@@ -140,7 +144,7 @@ $.extend({winmgr: {
 			}
 		}
 		if ($.winmgr.autoRefresh)
-			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefresh);
+			setTimeout($.winmgr.autoRefreshPoll, $.winmgr.autoRefreshPollDelay);
 	},
 
 	/**
@@ -380,6 +384,17 @@ $.extend({winmgr: {
 			return;
 
 		win.status = 'loading';
+		if (
+			$.winmgr.preserveFocus && // Trying to preserve focus
+			document.activeElement // An item has focus
+		) {
+			var ae = $(document.activeElement);
+			if (ae.attr('id')) {
+				$.winmgr.dialogs[id].focused = '#' + ae.attr('id');
+			} else if (ae.attr('name'))
+				$.winmgr.dialogs[id].focused = '[name="' + ae.attr('name') + '"]';
+		}
+
 		$.winmgr.onSetStatus(id, win.status); // Kick off the status change
 
 		$.winmgr.onPreLoad(id);
@@ -390,8 +405,18 @@ $.extend({winmgr: {
 			dataType: 'html',
 			type: 'POST',
 			success: function(html) {
+				var dialog = $.winmgr.dialogs[id].element.closest('.ui-dialog');
 				var body = $('<div></div>')
 					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incoming to avoid permission denied errors in IE
+				if ($.winmgr.dialogs[id].focused) {
+					var focused = dialog.find($.winmgr.dialogs[id].focused + ":last");
+					if (focused.length)
+						setTimeout(function() {
+							focused.trigger('focus');
+						}, 100);
+					delete($.winmgr.dialogs[id].focused);
+				}
+
 				var saveState = 0;
 				// Process options {{{
 				if ($.winmgr.fragmentOptions) {
@@ -427,7 +452,10 @@ $.extend({winmgr: {
 				}
 				// }}}
 				// Process footer {{{
-				if ($.winmgr.fragmentFooter) {
+				if (
+					$.winmgr.fragmentFooter &&
+					(!$.winmgr.preserveFooter || !dialog.data('has-footer'))
+				) {
 					var footer = $.winmgr._findFirst($.winmgr.fragmentFooter, body);
 					var dialog = win.element.closest('.ui-dialog');
 					var dialogFooter = dialog.find('.ui-dialog-buttonpane');
@@ -442,6 +470,7 @@ $.extend({winmgr: {
 					} else { // No incoming footer - remove from dialog
 						dialogFooter.empty();
 					}
+					dialog.data('has-footer', 1);
 				}
 				// }}}
 				// Process content {{{
@@ -537,8 +566,8 @@ $.extend({winmgr: {
 		}
 		// }}}
 
-		if (Object.keys(change).length) // Anything left over?
-			console.warn('Cannot import unknown options to WinMgr ID:', id, change);
+		if (Object.keys(oNew).length) // Anything left over?
+			console.warn('Cannot import unknown options to WinMgr ID:', id, oNew);
 
 		$.extend($.winmgr.dialogs[id], change);
 		if (save || save === undefined)
