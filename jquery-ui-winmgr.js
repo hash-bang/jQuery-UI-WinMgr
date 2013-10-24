@@ -565,6 +565,12 @@ $.extend({winmgr: {
 			delete(oNew.location);
 		}
 		// }}}
+		// .scroll {{{
+		if (oNew.scroll) {
+			$.extend($.winmgr.dialogs[id].scroll, oNew.scroll);
+			delete(oNew.scroll);
+		}
+		// }}}
 
 		if (Object.keys(oNew).length) // Anything left over?
 			console.warn('Cannot import unknown options to WinMgr ID:', id, oNew);
