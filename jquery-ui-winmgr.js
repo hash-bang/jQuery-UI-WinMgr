@@ -41,7 +41,6 @@ $.extend({winmgr: {
 	autoRefreshSkip: md5, // Comparent content using this function and skip updating the content (and triggering onSetStatus if the incoming content is identical), if null the content will always be overwritten
 
 	preserveFocus: true, // When redrawing a page try to recover the focus state as well
-	preserveFooter: false,
 
 	fragmentRedirect: ['#redirect'], // Use this as a redirection if present
 	fragmentContent: ['#content', 'body'], // The content container on all AJAX calls (i.e. strip out everything except this when displaying) - the first found element will be used if this is an array
@@ -178,6 +177,7 @@ $.extend({winmgr: {
 			data: {},
 			status: 'idle', // ENUM: ('idle', 'loading', 'error')
 			autoRefresh: $.winmgr.autoRefresh, // Auto refresh this dialog this number of milliseconds (poll occurs based on $.winmgr.autoRefresh though so it might not be accurate)
+			preserveFooter: false, // Allow one set of the footer then never touch it again
 			lastRefresh: 0,
 			error: null, // The last error (string) to occur - used by onSetStatus(id, 'error') to display something helpful
 			scroll: {top: 0, left: 0} // Default scroll offsets (mainly used to restore scrolling to windows after refresh / restores)
@@ -460,7 +460,7 @@ $.extend({winmgr: {
 					var dialog = win.element.closest('.ui-dialog');
 					var dialogFooter = dialog.find('.ui-dialog-buttonpane');
 					if (footer.length) {
-						if (!$.winmgr.preserveFooter || !win.loadedFooter) {
+						if (!win.preserveFooter || !win.loadedFooter) {
 							if (!dialogFooter.length)
 								dialogFooter = $('<div></div>')
 									.addClass('ui-dialog-buttonpane ui-widget-content ui-helper-clearfix')
