@@ -455,25 +455,24 @@ $.extend({winmgr: {
 				}
 				// }}}
 				// Process footer {{{
-				if (
-					$.winmgr.fragmentFooter &&
-					(!$.winmgr.preserveFooter || !dialog.data('has-footer'))
-				) {
+				if ($.winmgr.fragmentFooter) {
 					var footer = $.winmgr._findFirst($.winmgr.fragmentFooter, body);
 					var dialog = win.element.closest('.ui-dialog');
 					var dialogFooter = dialog.find('.ui-dialog-buttonpane');
 					if (footer.length) {
-						if (!dialogFooter.length)
-							dialogFooter = $('<div></div>')
-								.addClass('ui-dialog-buttonpane ui-widget-content ui-helper-clearfix')
-								.appendTo(dialog);
+						if (!$.winmgr.preserveFooter || !win.loadedFooter) {
+							if (!dialogFooter.length)
+								dialogFooter = $('<div></div>')
+									.addClass('ui-dialog-buttonpane ui-widget-content ui-helper-clearfix')
+									.appendTo(dialog);
 
-						dialogFooter.html(footer.html());
+							dialogFooter.html(footer.html());
+							win.loadedFooter = true;
+						}
 						footer.remove();
 					} else { // No incoming footer - remove from dialog
 						dialogFooter.empty();
 					}
-					dialog.data('has-footer', 1);
 				}
 				// }}}
 				// Process content {{{
