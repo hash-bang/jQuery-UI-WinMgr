@@ -208,6 +208,9 @@ $.extend({winmgr: {
 				height: tempLocation[3],
 				title: settings.title,
 				close: function(e, ui) {
+					$.winmgr.dialogs[settings.id].element
+						.dialog('destroy')
+						.remove();
 					delete($.winmgr.dialogs[settings.id]);
 					$.winmgr.saveState();
 					if ($.winmgr.baseOptions.close)
