@@ -132,9 +132,7 @@ $.extend({winmgr: {
 					var form = win.element.find('form').first();
 					if (form.length) {
 						refreshed = 1;
-						setTimeout(function() { // When the browser next has a free moment
-							$.winmgr.submitForm(d, form);
-						}, 0);
+						$.winmgr.submitForm(d, form);
 					}
 				}
 				// }}}
