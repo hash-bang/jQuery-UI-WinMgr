@@ -120,15 +120,16 @@ $.extend({winmgr: {
 	autoRefreshPoll: function() {
 		var now = (new Date).getTime();
 		for (var d in $.winmgr.dialogs) {
+			var win = $.winmgr.dialogs[d];
 			if (
-				$.winmgr.dialogs[d].status != 'loading' // Its not already loading AND
-				&& $.winmgr.dialogs[d].autoRefresh // AutoRefresh is enabled AND
-				&& $.winmgr.dialogs[d].lastRefresh + $.winmgr.dialogs[d].autoRefresh <= now // Its due to be updated
+				win.status != 'loading' // Its not already loading AND
+				&& win.autoRefresh // AutoRefresh is enabled AND
+				&& win.lastRefresh + win.autoRefresh <= now // Its due to be updated
 			) {
 				var refreshed = 0;
 				// Refresh via form submit {{{
 				if ($.winmgr.autoRefreshSubmit) { // Try to find a form to submit
-					var form = $.winmgr.dialogs[d].element.find('form').first();
+					var form = win.element.find('form').first();
 					if (form.length) {
 						refreshed = 1;
 						setTimeout(function() { // When the browser next has a free moment
@@ -408,6 +409,7 @@ $.extend({winmgr: {
 			dataType: 'html',
 			type: 'POST',
 			success: function(html) {
+				win.lastRefresh = (new Date).getTime();
 				var dialog = $.winmgr.dialogs[id].element.closest('.ui-dialog');
 				var body = $('<div></div>')
 					.append(html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')); // Strip scripts from incoming to avoid permission denied errors in IE
@@ -482,8 +484,10 @@ $.extend({winmgr: {
 						var thisHash = $.winmgr.autoRefreshSkip(content.html());
 						var oldHash = $.winmgr.dialogs[id] ? oldHash = $.winmgr.dialogs[id].hash : null;
 						win.hash = thisHash;
-						if (thisHash == oldHash) // If hashes match - dont update content
+						if (thisHash == oldHash) { // If hashes match - dont update content
+							win.status = 'idle';
 							return;
+						}
 					}
 					win.element.html(content.html());
 					if (win.scroll.top)
@@ -498,7 +502,6 @@ $.extend({winmgr: {
 					$.winmgr.onSetStatus(id, win.status);
 				}
 				// }}}
-				win.lastRefresh = (new Date).getTime();
 				$.winmgr.onPostLoad(id);
 				if (saveState)
 					$.winmgr.saveState();
